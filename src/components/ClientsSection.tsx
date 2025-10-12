@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
+import { DataTable, Column, Filter } from "@/components/ui/data-table";
 import { clientService } from "@/services/clientService";
 import { Client } from "@/types";
 
 const ClientsSection = () => {
   const [clients, setClients] = useState<Client[]>(clientService.getAll());
-  const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
 
@@ -22,10 +22,6 @@ const ClientsSection = () => {
     address: "",
     notes: ""
   });
-
-  const filteredClients = searchQuery === "" 
-    ? clients 
-    : clientService.search(searchQuery);
 
   const handleCreate = () => {
     const newClient = clientService.create(formData);
@@ -69,6 +65,79 @@ const ClientsSection = () => {
       notes: client.notes || ""
     });
   };
+
+  const totalOrders = clients.reduce((sum, client) => sum + client.totalOrders, 0);
+  const totalRevenue = clients.reduce((sum, client) => sum + client.totalSpent, 0);
+
+  const columns: Column<Client>[] = [
+    { 
+      key: 'id', 
+      label: 'ID', 
+      sortable: true,
+      width: 'w-[100px]'
+    },
+    { 
+      key: 'name', 
+      label: 'Клиент', 
+      render: (client) => (
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Icon name="User" className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <div className="font-medium">{client.name}</div>
+            <div className="text-xs text-muted-foreground">{client.email}</div>
+          </div>
+        </div>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'phone', 
+      label: 'Телефон', 
+      render: (client) => (
+        <div className="flex items-center gap-2 text-sm">
+          <Icon name="Phone" className="h-4 w-4 text-muted-foreground" />
+          <span>{client.phone}</span>
+        </div>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'address', 
+      label: 'Адрес', 
+      render: (client) => (
+        <div className="flex items-center gap-2 text-sm">
+          {client.address ? (
+            <>
+              <Icon name="MapPin" className="h-4 w-4 text-muted-foreground" />
+              <span>{client.address}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </div>
+      )
+    },
+    { 
+      key: 'totalOrders', 
+      label: 'Заказов', 
+      render: (client) => (
+        <Badge variant="outline">{client.totalOrders}</Badge>
+      ),
+      sortable: true,
+      width: 'w-[100px]'
+    },
+    { 
+      key: 'totalSpent', 
+      label: 'Сумма', 
+      render: (client) => (
+        <span className="font-medium">{client.totalSpent}₽</span>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    }
+  ];
 
   const ClientForm = () => (
     <div className="space-y-4">
@@ -146,91 +215,66 @@ const ClientsSection = () => {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex gap-4">
-            <Input 
-              placeholder="Поиск по имени, телефону, email..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1" 
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            {filteredClients.map((client) => (
-              <Card key={client.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3">
-                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Icon name="User" className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{client.name}</h3>
-                        <Badge variant="outline" className="mt-1">ID: {client.id}</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Icon name="Phone" className="h-4 w-4" />
-                      <span>{client.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Icon name="Mail" className="h-4 w-4" />
-                      <span>{client.email}</span>
-                    </div>
-                    {client.address && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Icon name="MapPin" className="h-4 w-4" />
-                        <span>{client.address}</span>
-                      </div>
-                    )}
-                  </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Всего клиентов</CardTitle>
+            <Icon name="Users" className="h-5 w-5 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{clients.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">В базе данных</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Всего заказов</CardTitle>
+            <Icon name="ShoppingCart" className="h-5 w-5 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalOrders}</div>
+            <p className="text-xs text-muted-foreground mt-1">От всех клиентов</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Общая выручка</CardTitle>
+            <Icon name="DollarSign" className="h-5 w-5 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">₽{totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">За всё время</p>
+          </CardContent>
+        </Card>
+      </div>
 
-                  <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Заказов</div>
-                      <div className="text-lg font-bold">{client.totalOrders}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Общая сумма</div>
-                      <div className="text-lg font-bold">{client.totalSpent}₽</div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => openEdit(client)}>
-                          <Icon name="Edit" className="h-4 w-4" />
-                          Изменить
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Редактировать клиента</DialogTitle>
-                        </DialogHeader>
-                        <ClientForm />
-                      </DialogContent>
-                    </Dialog>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDelete(client.id)}
-                    >
-                      <Icon name="Trash2" className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={clients}
+        columns={columns}
+        searchKeys={['id', 'name', 'email', 'phone', 'address']}
+        searchPlaceholder="Поиск по имени, телефону, email..."
+        renderActions={(client) => (
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(client)}>
+                  <Icon name="Edit" className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Редактировать клиента</DialogTitle>
+                </DialogHeader>
+                <ClientForm />
+              </DialogContent>
+            </Dialog>
+            <Button size="sm" variant="ghost" onClick={() => handleDelete(client.id)}>
+              <Icon name="Trash2" className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+        emptyMessage="Нет клиентов в базе"
+      />
     </div>
   );
 };

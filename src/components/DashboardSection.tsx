@@ -12,18 +12,20 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, icon, trend, trendUp }: StatCardProps) => (
-  <Card className="hover:shadow-lg transition-shadow">
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
+  <Card className="hover:shadow-lg transition-all hover:scale-[1.02] border-0">
+    <CardHeader className="flex flex-row items-center justify-between pb-3">
       <CardTitle className="text-sm font-medium text-muted-foreground">
         {title}
       </CardTitle>
-      <Icon name={icon} className="h-5 w-5 text-primary" />
+      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+        <Icon name={icon} className="h-6 w-6 text-primary" />
+      </div>
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-bold">{value}</div>
+      <div className="text-3xl font-bold mb-1">{value}</div>
       {trend && (
-        <p className={`text-xs mt-2 flex items-center gap-1 ${trendUp ? 'text-green-600' : 'text-red-600'}`}>
-          <Icon name={trendUp ? "TrendingUp" : "TrendingDown"} className="h-3 w-3" />
+        <p className={`text-xs flex items-center gap-1.5 font-medium ${trendUp ? 'text-green-600' : 'text-red-600'}`}>
+          <Icon name={trendUp ? "TrendingUp" : "TrendingDown"} className="h-3.5 w-3.5" />
           {trend}
         </p>
       )}

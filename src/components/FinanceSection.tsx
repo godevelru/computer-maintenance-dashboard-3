@@ -7,13 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
+import { DataTable, Column, Filter } from "@/components/ui/data-table";
 import { financeService } from "@/services/financeService";
 import { Transaction, TransactionType } from "@/types";
 
 const FinanceSection = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(financeService.getAll());
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -25,15 +24,6 @@ const FinanceSection = () => {
     date: new Date(),
     relatedRepairId: "",
     paymentMethod: ""
-  });
-
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesType = typeFilter === "all" || transaction.type === typeFilter;
-    const matchesSearch = searchQuery === "" || 
-      transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      transaction.category.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesType && matchesSearch;
   });
 
   const totalIncome = financeService.getTotalIncome();
@@ -86,6 +76,89 @@ const FinanceSection = () => {
       paymentMethod: transaction.paymentMethod || ""
     });
   };
+
+  const columns: Column<Transaction>[] = [
+    { 
+      key: 'date', 
+      label: 'Дата', 
+      render: (transaction) => (
+        <span className="text-sm">{transaction.date.toLocaleDateString('ru-RU')}</span>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'type', 
+      label: 'Тип', 
+      render: (transaction) => (
+        <div className="flex items-center gap-2">
+          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+            transaction.type === 'income' ? 'bg-green-500/10' : 'bg-red-500/10'
+          }`}>
+            <Icon name={transaction.type === 'income' ? 'ArrowDownLeft' : 'ArrowUpRight'} 
+                  className={`h-4 w-4 ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} />
+          </div>
+          <Badge variant={transaction.type === 'income' ? 'outline' : 'secondary'}>
+            {transaction.type === 'income' ? 'Доход' : 'Расход'}
+          </Badge>
+        </div>
+      ),
+      sortable: true,
+      width: 'w-[140px]'
+    },
+    { 
+      key: 'description', 
+      label: 'Описание', 
+      render: (transaction) => (
+        <div>
+          <div className="font-medium">{transaction.description}</div>
+          <div className="text-xs text-muted-foreground">
+            {transaction.relatedRepairId && `Заявка: ${transaction.relatedRepairId}`}
+          </div>
+        </div>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'category', 
+      label: 'Категория', 
+      render: (transaction) => (
+        <Badge variant="outline">{transaction.category}</Badge>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'paymentMethod', 
+      label: 'Способ оплаты', 
+      render: (transaction) => (
+        <span className="text-sm text-muted-foreground">
+          {transaction.paymentMethod || '-'}
+        </span>
+      )
+    },
+    { 
+      key: 'amount', 
+      label: 'Сумма', 
+      render: (transaction) => (
+        <div className={`font-bold text-right ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+          {transaction.type === 'income' ? '+' : '-'}₽{transaction.amount.toLocaleString()}
+        </div>
+      ),
+      sortable: true,
+      width: 'w-[140px]'
+    }
+  ];
+
+  const filters: Filter[] = [
+    {
+      key: 'type',
+      label: 'Тип',
+      options: [
+        { value: 'income', label: 'Доходы' },
+        { value: 'expense', label: 'Расходы' }
+      ]
+    }
+  ];
 
   const TransactionForm = () => (
     <div className="space-y-4">
@@ -231,89 +304,34 @@ const FinanceSection = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Input 
-              placeholder="Поиск по описанию, категории..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1" 
-            />
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Тип" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все операции</SelectItem>
-                <SelectItem value="income">Доходы</SelectItem>
-                <SelectItem value="expense">Расходы</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {filteredTransactions.map((transaction) => (
-              <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    transaction.type === 'income' ? 'bg-green-500/10' : 'bg-red-500/10'
-                  }`}>
-                    <Icon name={transaction.type === 'income' ? 'ArrowDownLeft' : 'ArrowUpRight'} 
-                          className={`h-5 w-5 ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} />
-                  </div>
-                  <div>
-                    <div className="font-medium">{transaction.description}</div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">{transaction.category}</Badge>
-                      {transaction.relatedRepairId && (
-                        <span>• Заявка: {transaction.relatedRepairId}</span>
-                      )}
-                      {transaction.paymentMethod && (
-                        <span>• {transaction.paymentMethod}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className={`font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                      {transaction.type === 'income' ? '+' : '-'}₽{transaction.amount.toLocaleString()}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {transaction.date.toLocaleDateString('ru-RU')}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(transaction)}>
-                          <Icon name="Edit" className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Редактировать операцию</DialogTitle>
-                        </DialogHeader>
-                        <TransactionForm />
-                      </DialogContent>
-                    </Dialog>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(transaction.id)}>
-                      <Icon name="Trash2" className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {filteredTransactions.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                Нет операций
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={transactions}
+        columns={columns}
+        filters={filters}
+        searchKeys={['description', 'category', 'relatedRepairId', 'paymentMethod']}
+        searchPlaceholder="Поиск по описанию, категории, ID заявки..."
+        renderActions={(transaction) => (
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(transaction)}>
+                  <Icon name="Edit" className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Редактировать операцию</DialogTitle>
+                </DialogHeader>
+                <TransactionForm />
+              </DialogContent>
+            </Dialog>
+            <Button size="sm" variant="ghost" onClick={() => handleDelete(transaction.id)}>
+              <Icon name="Trash2" className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+        emptyMessage="Нет финансовых операций"
+      />
     </div>
   );
 };

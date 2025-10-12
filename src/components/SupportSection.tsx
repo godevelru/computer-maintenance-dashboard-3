@@ -8,13 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
+import { DataTable, Column, Filter } from "@/components/ui/data-table";
 import { supportService } from "@/services/supportService";
 import { SupportTicket, Priority } from "@/types";
 
 const SupportSection = () => {
   const [tickets, setTickets] = useState<SupportTicket[]>(supportService.getAll());
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<SupportTicket | null>(null);
 
@@ -26,16 +25,6 @@ const SupportSection = () => {
     status: "open" as "open" | "in_progress" | "resolved" | "closed",
     priority: "medium" as Priority,
     assignedTo: ""
-  });
-
-  const filteredTickets = tickets.filter(ticket => {
-    const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
-    const matchesSearch = searchQuery === "" || 
-      ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesStatus && matchesSearch;
   });
 
   const openTickets = tickets.filter(t => t.status === "open").length;
@@ -124,6 +113,91 @@ const SupportSection = () => {
     };
     return <Badge variant={variants[status] as any}>{labels[status]}</Badge>;
   };
+
+  const columns: Column<SupportTicket>[] = [
+    { 
+      key: 'id', 
+      label: 'ID', 
+      render: (ticket) => (
+        <Badge variant="outline" className="font-mono">{ticket.id}</Badge>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'subject', 
+      label: 'Тема', 
+      render: (ticket) => (
+        <div>
+          <div className="font-medium">{ticket.subject}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {ticket.userName}
+            {ticket.assignedTo && ` • Назначен: ${ticket.assignedTo}`}
+          </div>
+        </div>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'status', 
+      label: 'Статус', 
+      render: (ticket) => getStatusBadge(ticket.status),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'priority', 
+      label: 'Приоритет', 
+      render: (ticket) => getPriorityBadge(ticket.priority),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'createdAt', 
+      label: 'Создан', 
+      render: (ticket) => (
+        <span className="text-sm text-muted-foreground">
+          {ticket.createdAt.toLocaleDateString('ru-RU')}
+        </span>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'updatedAt', 
+      label: 'Обновлен', 
+      render: (ticket) => (
+        <span className="text-sm text-muted-foreground">
+          {ticket.updatedAt.toLocaleDateString('ru-RU')}
+        </span>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    }
+  ];
+
+  const filters: Filter[] = [
+    {
+      key: 'status',
+      label: 'Статус',
+      options: [
+        { value: 'open', label: 'Открытые' },
+        { value: 'in_progress', label: 'В работе' },
+        { value: 'resolved', label: 'Решенные' },
+        { value: 'closed', label: 'Закрытые' }
+      ]
+    },
+    {
+      key: 'priority',
+      label: 'Приоритет',
+      options: [
+        { value: 'urgent', label: 'Срочный' },
+        { value: 'high', label: 'Высокий' },
+        { value: 'medium', label: 'Средний' },
+        { value: 'low', label: 'Низкий' }
+      ]
+    }
+  ];
 
   const TicketForm = () => (
     <div className="space-y-4">
@@ -277,85 +351,34 @@ const SupportSection = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Input 
-              placeholder="Поиск по теме, пользователю, ID..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1" 
-            />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Статус" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все статусы</SelectItem>
-                <SelectItem value="open">Открытые</SelectItem>
-                <SelectItem value="in_progress">В работе</SelectItem>
-                <SelectItem value="resolved">Решенные</SelectItem>
-                <SelectItem value="closed">Закрытые</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {filteredTickets.map((ticket) => (
-              <div key={ticket.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-4">
-                  <Icon name="MessageSquare" className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">
-                      <Badge variant="outline" className="mr-2">{ticket.id}</Badge>
-                      {ticket.subject}
-                    </div>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                      <span>{ticket.userName}</span>
-                      <span>•</span>
-                      <span>{ticket.createdAt.toLocaleDateString('ru-RU')}</span>
-                      {ticket.assignedTo && (
-                        <>
-                          <span>•</span>
-                          <span>Назначен: {ticket.assignedTo}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {getPriorityBadge(ticket.priority)}
-                  {getStatusBadge(ticket.status)}
-                  <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(ticket)}>
-                          <Icon name="Edit" className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Редактировать тикет</DialogTitle>
-                        </DialogHeader>
-                        <TicketForm />
-                      </DialogContent>
-                    </Dialog>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(ticket.id)}>
-                      <Icon name="Trash2" className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {filteredTickets.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                Нет обращений
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={tickets}
+        columns={columns}
+        filters={filters}
+        searchKeys={['id', 'subject', 'userName', 'description', 'assignedTo']}
+        searchPlaceholder="Поиск по ID, теме, пользователю..."
+        renderActions={(ticket) => (
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(ticket)}>
+                  <Icon name="Edit" className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Редактировать тикет</DialogTitle>
+                </DialogHeader>
+                <TicketForm />
+              </DialogContent>
+            </Dialog>
+            <Button size="sm" variant="ghost" onClick={() => handleDelete(ticket.id)}>
+              <Icon name="Trash2" className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+        emptyMessage="Нет обращений в поддержку"
+      />
 
       <Card>
         <CardHeader>

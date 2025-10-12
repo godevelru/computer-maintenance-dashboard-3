@@ -1,19 +1,18 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
+import { DataTable, Column, Filter } from "@/components/ui/data-table";
 import { technicianService } from "@/services/technicianService";
 import { Technician, TechnicianStatus } from "@/types";
 
 const TechniciansSection = () => {
   const [technicians, setTechnicians] = useState<Technician[]>(technicianService.getAll());
-  const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTechnician, setEditingTechnician] = useState<Technician | null>(null);
 
@@ -28,16 +27,6 @@ const TechniciansSection = () => {
   });
 
   const [specializationInput, setSpecializationInput] = useState("");
-
-  const filteredTechnicians = technicians.filter(tech => {
-    if (searchQuery === "") return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      tech.name.toLowerCase().includes(query) ||
-      tech.specialization.some(s => s.toLowerCase().includes(query)) ||
-      tech.email.toLowerCase().includes(query)
-    );
-  });
 
   const activeTechnicians = technicians.filter(t => t.status === "available" || t.status === "busy");
   const totalTasks = technicians.reduce((sum, t) => sum + t.completedRepairs, 0);
@@ -130,6 +119,88 @@ const TechniciansSection = () => {
     };
     return <Badge variant={variants[status] as any}>{labels[status]}</Badge>;
   };
+
+  const columns: Column<Technician>[] = [
+    { 
+      key: 'name', 
+      label: 'Техник', 
+      render: (tech) => (
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+            {tech.name.charAt(0)}
+          </div>
+          <div>
+            <div className="font-medium">{tech.name}</div>
+            <div className="text-xs text-muted-foreground">{tech.email}</div>
+          </div>
+        </div>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'specialization', 
+      label: 'Специализация', 
+      render: (tech) => (
+        <div className="flex flex-wrap gap-1">
+          {tech.specialization.map((spec, idx) => (
+            <Badge key={idx} variant="secondary" className="text-xs">{spec}</Badge>
+          ))}
+        </div>
+      )
+    },
+    { 
+      key: 'status', 
+      label: 'Статус', 
+      render: (tech) => getStatusBadge(tech.status),
+      sortable: true
+    },
+    { 
+      key: 'rating', 
+      label: 'Рейтинг', 
+      render: (tech) => (
+        <div className="flex items-center gap-1">
+          <Icon name="Star" className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+          <span className="font-medium">{tech.rating.toFixed(1)}</span>
+        </div>
+      ),
+      sortable: true,
+      width: 'w-[100px]'
+    },
+    { 
+      key: 'completedRepairs', 
+      label: 'Выполнено', 
+      render: (tech) => (
+        <div className="flex items-center gap-2">
+          <Icon name="CheckCircle2" className="h-4 w-4 text-green-600" />
+          <span className="font-medium">{tech.completedRepairs}</span>
+        </div>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'hourlyRate', 
+      label: 'Ставка', 
+      render: (tech) => (
+        <span className="font-medium">₽{tech.hourlyRate}/час</span>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    }
+  ];
+
+  const filters: Filter[] = [
+    {
+      key: 'status',
+      label: 'Статус',
+      options: [
+        { value: 'available', label: 'Доступен' },
+        { value: 'busy', label: 'Занят' },
+        { value: 'on_break', label: 'На перерыве' },
+        { value: 'off_duty', label: 'Не на смене' }
+      ]
+    }
+  ];
 
   const TechnicianForm = () => (
     <div className="space-y-4">
@@ -302,80 +373,34 @@ const TechniciansSection = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <Input 
-            placeholder="Поиск по имени, специализации..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            {filteredTechnicians.map((tech) => (
-              <Card key={tech.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3">
-                      <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary">
-                        {tech.name.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-lg">{tech.name}</h3>
-                        <p className="text-sm text-muted-foreground">{tech.specialization.join(", ")}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Icon name="Star" className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                          <span className="text-sm font-medium">{tech.rating.toFixed(1)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {getStatusBadge(tech.status)}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Ставка</span>
-                      <span className="font-medium">₽{tech.hourlyRate}/час</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm pt-2">
-                      <div className="flex items-center gap-2">
-                        <Icon name="CheckCircle2" className="h-4 w-4 text-green-600" />
-                        <span className="text-muted-foreground">Выполнено</span>
-                      </div>
-                      <span className="font-medium">{tech.completedRepairs} заявок</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 mt-4">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex-1 gap-2" onClick={() => openEdit(tech)}>
-                          <Icon name="Edit" className="h-4 w-4" />
-                          Изменить
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Редактировать техника</DialogTitle>
-                        </DialogHeader>
-                        <TechnicianForm />
-                      </DialogContent>
-                    </Dialog>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDelete(tech.id)}
-                    >
-                      <Icon name="Trash2" className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={technicians}
+        columns={columns}
+        filters={filters}
+        searchKeys={['name', 'email', 'phone', 'specialization']}
+        searchPlaceholder="Поиск по имени, email, специализации..."
+        renderActions={(tech) => (
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(tech)}>
+                  <Icon name="Edit" className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Редактировать техника</DialogTitle>
+                </DialogHeader>
+                <TechnicianForm />
+              </DialogContent>
+            </Dialog>
+            <Button size="sm" variant="ghost" onClick={() => handleDelete(tech.id)}>
+              <Icon name="Trash2" className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+        emptyMessage="Нет техников в системе"
+      />
     </div>
   );
 };

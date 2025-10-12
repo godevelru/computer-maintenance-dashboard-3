@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
+import { DataTable, Column, Filter } from "@/components/ui/data-table";
 import { inventoryService } from "@/services/inventoryService";
 import { InventoryItem } from "@/types";
 
 const InventorySection = () => {
   const [items, setItems] = useState<InventoryItem[]>(inventoryService.getAll());
-  const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
@@ -26,19 +26,9 @@ const InventorySection = () => {
     location: ""
   });
 
-  const filteredItems = items.filter(item => {
-    if (searchQuery === "") return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      item.name.toLowerCase().includes(query) ||
-      item.sku.toLowerCase().includes(query) ||
-      item.category.toLowerCase().includes(query)
-    );
-  });
-
   const lowStockItems = items.filter(item => item.quantity <= item.minQuantity);
-
   const totalValue = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const categories = [...new Set(items.map(item => item.category))];
 
   const handleCreate = () => {
     inventoryService.create({
@@ -97,6 +87,83 @@ const InventorySection = () => {
     if (item.quantity <= item.minQuantity) return { variant: "secondary" as const, label: "Низкий остаток" };
     return { variant: "outline" as const, label: "В наличии" };
   };
+
+  const columns: Column<InventoryItem>[] = [
+    { 
+      key: 'name', 
+      label: 'Наименование', 
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <Icon name="Package" className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">{item.name}</span>
+        </div>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'category', 
+      label: 'Категория', 
+      render: (item) => (
+        <Badge variant="outline">{item.category}</Badge>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'sku', 
+      label: 'SKU', 
+      render: (item) => (
+        <span className="text-sm text-muted-foreground">{item.sku}</span>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'quantity', 
+      label: 'Остаток', 
+      render: (item) => (
+        <span className={`font-medium ${item.quantity <= item.minQuantity ? 'text-red-600' : ''}`}>
+          {item.quantity} шт.
+        </span>
+      ),
+      sortable: true,
+      width: 'w-[100px]'
+    },
+    { 
+      key: 'minQuantity', 
+      label: 'Мин. остаток', 
+      render: (item) => (
+        <span className="text-sm text-muted-foreground">{item.minQuantity} шт.</span>
+      ),
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'price', 
+      label: 'Цена', 
+      render: (item) => (
+        <span className="font-medium">₽{item.price}</span>
+      ),
+      sortable: true,
+      width: 'w-[100px]'
+    },
+    { 
+      key: 'status', 
+      label: 'Статус', 
+      render: (item) => {
+        const status = getStockStatus(item);
+        return <Badge variant={status.variant}>{status.label}</Badge>;
+      },
+      width: 'w-[140px]'
+    }
+  ];
+
+  const filters: Filter[] = [
+    {
+      key: 'category',
+      label: 'Категория',
+      options: categories.map(cat => ({ value: cat, label: cat }))
+    }
+  ];
 
   const ItemForm = () => (
     <div className="space-y-4">
@@ -237,83 +304,34 @@ const InventorySection = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex gap-4">
-            <Input 
-              placeholder="Поиск по названию, артикулу..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1" 
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">Наименование</th>
-                  <th className="p-3 text-left font-medium">Категория</th>
-                  <th className="p-3 text-left font-medium">SKU</th>
-                  <th className="p-3 text-left font-medium">Остаток</th>
-                  <th className="p-3 text-left font-medium">Мин. остаток</th>
-                  <th className="p-3 text-left font-medium">Цена</th>
-                  <th className="p-3 text-left font-medium">Статус</th>
-                  <th className="p-3 text-left font-medium">Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => {
-                  const status = getStockStatus(item);
-                  return (
-                    <tr key={item.id} className="border-b hover:bg-muted/50 transition-colors">
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <Icon name="Package" className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{item.name}</span>
-                        </div>
-                      </td>
-                      <td className="p-3 text-sm">{item.category}</td>
-                      <td className="p-3 text-sm text-muted-foreground">{item.sku}</td>
-                      <td className="p-3">
-                        <span className={`font-medium ${item.quantity <= item.minQuantity ? 'text-red-600' : ''}`}>
-                          {item.quantity} шт.
-                        </span>
-                      </td>
-                      <td className="p-3 text-sm text-muted-foreground">{item.minQuantity} шт.</td>
-                      <td className="p-3 font-medium">₽{item.price}</td>
-                      <td className="p-3">
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="ghost" onClick={() => openEdit(item)}>
-                                <Icon name="Edit" className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-h-[90vh] overflow-y-auto">
-                              <DialogHeader>
-                                <DialogTitle>Редактировать позицию</DialogTitle>
-                              </DialogHeader>
-                              <ItemForm />
-                            </DialogContent>
-                          </Dialog>
-                          <Button size="sm" variant="ghost" onClick={() => handleDelete(item.id)}>
-                            <Icon name="Trash2" className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        data={items}
+        columns={columns}
+        filters={filters}
+        searchKeys={['name', 'sku', 'category', 'supplier']}
+        searchPlaceholder="Поиск по названию, артикулу, категории..."
+        renderActions={(item) => (
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(item)}>
+                  <Icon name="Edit" className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Редактировать позицию</DialogTitle>
+                </DialogHeader>
+                <ItemForm />
+              </DialogContent>
+            </Dialog>
+            <Button size="sm" variant="ghost" onClick={() => handleDelete(item.id)}>
+              <Icon name="Trash2" className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+        emptyMessage="Нет товаров на складе"
+      />
     </div>
   );
 };

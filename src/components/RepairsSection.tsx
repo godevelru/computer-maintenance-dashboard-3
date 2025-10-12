@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
+import { DataTable, Column, Filter } from "@/components/ui/data-table";
 import { repairService } from "@/services/repairService";
 import { clientService } from "@/services/clientService";
 import { technicianService } from "@/services/technicianService";
@@ -14,9 +15,6 @@ import { Repair, RepairStatus, Priority } from "@/types";
 
 const RepairsSection = () => {
   const [repairs, setRepairs] = useState<Repair[]>(repairService.getAll());
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingRepair, setEditingRepair] = useState<Repair | null>(null);
 
@@ -35,16 +33,9 @@ const RepairsSection = () => {
     notes: ""
   });
 
-  const filteredRepairs = repairs.filter(repair => {
-    const matchesStatus = statusFilter === "all" || repair.status === statusFilter;
-    const matchesPriority = priorityFilter === "all" || repair.priority === priorityFilter;
-    const matchesSearch = searchQuery === "" || 
-      repair.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      repair.deviceModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      repair.clientName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesStatus && matchesPriority && matchesSearch;
-  });
+  const newRepairs = repairs.filter(r => r.status === "new").length;
+  const inProgressRepairs = repairs.filter(r => r.status === "in_progress").length;
+  const completedRepairs = repairs.filter(r => r.status === "completed").length;
 
   const handleCreate = () => {
     const client = clients.find(c => c.id === formData.clientId);
@@ -133,6 +124,100 @@ const RepairsSection = () => {
     };
     return <Badge variant={variants[status] as any}>{labels[status]}</Badge>;
   };
+
+  const getPriorityBadge = (priority: Priority) => {
+    const variants = {
+      low: "outline",
+      medium: "secondary",
+      high: "default",
+      urgent: "destructive"
+    };
+    const labels = {
+      low: "Низкий",
+      medium: "Средний",
+      high: "Высокий",
+      urgent: "Срочный"
+    };
+    return <Badge variant={variants[priority] as any}>{labels[priority]}</Badge>;
+  };
+
+  const columns: Column<Repair>[] = [
+    { 
+      key: 'id', 
+      label: 'ID', 
+      sortable: true,
+      width: 'w-[120px]'
+    },
+    { 
+      key: 'deviceModel', 
+      label: 'Устройство', 
+      render: (repair) => (
+        <div className="flex items-center gap-2">
+          <Icon name="Monitor" className="h-4 w-4 text-muted-foreground" />
+          <div>
+            <div className="font-medium">{repair.deviceModel}</div>
+            <div className="text-xs text-muted-foreground">{repair.deviceType}</div>
+          </div>
+        </div>
+      ),
+      sortable: true
+    },
+    { 
+      key: 'problem', 
+      label: 'Проблема', 
+      render: (repair) => <span className="text-sm">{repair.problem}</span>,
+      sortable: true
+    },
+    { 
+      key: 'clientName', 
+      label: 'Клиент', 
+      render: (repair) => <span className="text-sm">{repair.clientName}</span>,
+      sortable: true
+    },
+    { 
+      key: 'status', 
+      label: 'Статус', 
+      render: (repair) => getStatusBadge(repair.status),
+      sortable: true
+    },
+    { 
+      key: 'priority', 
+      label: 'Приоритет', 
+      render: (repair) => getPriorityBadge(repair.priority),
+      sortable: true
+    },
+    { 
+      key: 'estimatedCost', 
+      label: 'Стоимость', 
+      render: (repair) => <span className="font-medium">{repair.estimatedCost}₽</span>,
+      sortable: true,
+      width: 'w-[120px]'
+    }
+  ];
+
+  const filters: Filter[] = [
+    {
+      key: 'status',
+      label: 'Статус',
+      options: [
+        { value: 'new', label: 'Новые' },
+        { value: 'in_progress', label: 'В работе' },
+        { value: 'waiting_parts', label: 'Ожидание деталей' },
+        { value: 'completed', label: 'Завершено' },
+        { value: 'cancelled', label: 'Отменено' }
+      ]
+    },
+    {
+      key: 'priority',
+      label: 'Приоритет',
+      options: [
+        { value: 'urgent', label: 'Срочный' },
+        { value: 'high', label: 'Высокий' },
+        { value: 'medium', label: 'Средний' },
+        { value: 'low', label: 'Низкий' }
+      ]
+    }
+  ];
 
   const RepairForm = () => (
     <div className="space-y-4">
@@ -251,101 +336,67 @@ const RepairsSection = () => {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Input 
-                placeholder="Поиск по ID, устройству, клиенту..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full" 
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Статус" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все статусы</SelectItem>
-                <SelectItem value="new">Новые</SelectItem>
-                <SelectItem value="in_progress">В работе</SelectItem>
-                <SelectItem value="waiting_parts">Ожидание деталей</SelectItem>
-                <SelectItem value="completed">Завершено</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Приоритет" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все приоритеты</SelectItem>
-                <SelectItem value="urgent">Срочный</SelectItem>
-                <SelectItem value="high">Высокий</SelectItem>
-                <SelectItem value="medium">Средний</SelectItem>
-                <SelectItem value="low">Низкий</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">ID</th>
-                  <th className="p-3 text-left font-medium">Устройство</th>
-                  <th className="p-3 text-left font-medium">Проблема</th>
-                  <th className="p-3 text-left font-medium">Клиент</th>
-                  <th className="p-3 text-left font-medium">Статус</th>
-                  <th className="p-3 text-left font-medium">Стоимость</th>
-                  <th className="p-3 text-left font-medium">Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRepairs.map((repair) => (
-                  <tr key={repair.id} className="border-b hover:bg-muted/50 transition-colors">
-                    <td className="p-3 font-medium">{repair.id}</td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Icon name="Monitor" className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <div className="font-medium">{repair.deviceModel}</div>
-                          <div className="text-xs text-muted-foreground">{repair.deviceType}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm">{repair.problem}</td>
-                    <td className="p-3 text-sm">{repair.clientName}</td>
-                    <td className="p-3">{getStatusBadge(repair.status)}</td>
-                    <td className="p-3 font-medium">{repair.estimatedCost}₽</td>
-                    <td className="p-3">
-                      <div className="flex gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button size="sm" variant="ghost" onClick={() => openEdit(repair)}>
-                              <Icon name="Edit" className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                              <DialogTitle>Редактировать заявку</DialogTitle>
-                            </DialogHeader>
-                            <RepairForm />
-                          </DialogContent>
-                        </Dialog>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(repair.id)}>
-                          <Icon name="Trash2" className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-3 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Новые заявки</CardTitle>
+            <Icon name="AlertCircle" className="h-5 w-5 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{newRepairs}</div>
+            <p className="text-xs text-muted-foreground mt-1">Ожидают назначения</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">В работе</CardTitle>
+            <Icon name="Wrench" className="h-5 w-5 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{inProgressRepairs}</div>
+            <p className="text-xs text-muted-foreground mt-1">Активных ремонтов</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Завершено</CardTitle>
+            <Icon name="CheckCircle2" className="h-5 w-5 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{completedRepairs}</div>
+            <p className="text-xs text-muted-foreground mt-1">Готовы к выдаче</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <DataTable
+        data={repairs}
+        columns={columns}
+        filters={filters}
+        searchKeys={['id', 'deviceModel', 'deviceType', 'problem', 'clientName']}
+        searchPlaceholder="Поиск по ID, устройству, клиенту..."
+        renderActions={(repair) => (
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={() => openEdit(repair)}>
+                  <Icon name="Edit" className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Редактировать заявку</DialogTitle>
+                </DialogHeader>
+                <RepairForm />
+              </DialogContent>
+            </Dialog>
+            <Button size="sm" variant="ghost" onClick={() => handleDelete(repair.id)}>
+              <Icon name="Trash2" className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+        emptyMessage="Нет заявок на ремонт"
+      />
     </div>
   );
 };
