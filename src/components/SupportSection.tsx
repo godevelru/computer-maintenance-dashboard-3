@@ -1,17 +1,215 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
+import { supportService } from "@/services/supportService";
+import { SupportTicket, Priority } from "@/types";
 
 const SupportSection = () => {
-  const tickets = [
-    { id: 1, subject: "Ошибка при создании заявки", status: "open", priority: "high", date: "12.10.2025", replies: 3 },
-    { id: 2, subject: "Вопрос по экспорту отчетов", status: "in-progress", priority: "medium", date: "11.10.2025", replies: 5 },
-    { id: 3, subject: "Запрос на новую функцию", status: "closed", priority: "low", date: "09.10.2025", replies: 8 },
-  ];
+  const [tickets, setTickets] = useState<SupportTicket[]>(supportService.getAll());
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingTicket, setEditingTicket] = useState<SupportTicket | null>(null);
+
+  const [formData, setFormData] = useState({
+    userId: "",
+    userName: "",
+    subject: "",
+    description: "",
+    status: "open" as "open" | "in_progress" | "resolved" | "closed",
+    priority: "medium" as Priority,
+    assignedTo: ""
+  });
+
+  const filteredTickets = tickets.filter(ticket => {
+    const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
+    const matchesSearch = searchQuery === "" || 
+      ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ticket.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ticket.id.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesStatus && matchesSearch;
+  });
+
+  const openTickets = tickets.filter(t => t.status === "open").length;
+  const inProgressTickets = tickets.filter(t => t.status === "in_progress").length;
+  const resolvedToday = tickets.filter(t => {
+    const today = new Date();
+    return t.status === "resolved" && 
+           t.updatedAt.toDateString() === today.toDateString();
+  }).length;
+
+  const handleCreate = () => {
+    supportService.create(formData);
+    setTickets(supportService.getAll());
+    setIsCreateOpen(false);
+    resetForm();
+  };
+
+  const handleUpdate = () => {
+    if (!editingTicket) return;
+    supportService.update(editingTicket.id, formData);
+    setTickets(supportService.getAll());
+    setEditingTicket(null);
+    resetForm();
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Удалить тикет?")) {
+      supportService.delete(id);
+      setTickets(supportService.getAll());
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      userId: "",
+      userName: "",
+      subject: "",
+      description: "",
+      status: "open",
+      priority: "medium",
+      assignedTo: ""
+    });
+  };
+
+  const openEdit = (ticket: SupportTicket) => {
+    setEditingTicket(ticket);
+    setFormData({
+      userId: ticket.userId,
+      userName: ticket.userName,
+      subject: ticket.subject,
+      description: ticket.description,
+      status: ticket.status,
+      priority: ticket.priority,
+      assignedTo: ticket.assignedTo || ""
+    });
+  };
+
+  const getPriorityBadge = (priority: Priority) => {
+    const variants = {
+      low: "secondary",
+      medium: "default",
+      high: "secondary",
+      urgent: "destructive"
+    };
+    const labels = {
+      low: "Низкий",
+      medium: "Средний",
+      high: "Высокий",
+      urgent: "Срочный"
+    };
+    return <Badge variant={variants[priority] as any}>{labels[priority]}</Badge>;
+  };
+
+  const getStatusBadge = (status: SupportTicket['status']) => {
+    const variants = {
+      open: "default",
+      in_progress: "secondary",
+      resolved: "outline",
+      closed: "outline"
+    };
+    const labels = {
+      open: "Открыт",
+      in_progress: "В работе",
+      resolved: "Решен",
+      closed: "Закрыт"
+    };
+    return <Badge variant={variants[status] as any}>{labels[status]}</Badge>;
+  };
+
+  const TicketForm = () => (
+    <div className="space-y-4">
+      <div>
+        <Label>ID пользователя</Label>
+        <Input 
+          value={formData.userId} 
+          onChange={(e) => setFormData({...formData, userId: e.target.value})} 
+          placeholder="USER-001" 
+        />
+      </div>
+      
+      <div>
+        <Label>Имя пользователя</Label>
+        <Input 
+          value={formData.userName} 
+          onChange={(e) => setFormData({...formData, userName: e.target.value})} 
+          placeholder="Иван Иванов" 
+        />
+      </div>
+      
+      <div>
+        <Label>Тема</Label>
+        <Input 
+          value={formData.subject} 
+          onChange={(e) => setFormData({...formData, subject: e.target.value})} 
+          placeholder="Опишите проблему кратко" 
+        />
+      </div>
+      
+      <div>
+        <Label>Описание</Label>
+        <Textarea 
+          value={formData.description} 
+          onChange={(e) => setFormData({...formData, description: e.target.value})} 
+          placeholder="Подробное описание проблемы..." 
+          rows={4}
+        />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Статус</Label>
+          <Select value={formData.status} onValueChange={(val) => setFormData({...formData, status: val as any})}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="open">Открыт</SelectItem>
+              <SelectItem value="in_progress">В работе</SelectItem>
+              <SelectItem value="resolved">Решен</SelectItem>
+              <SelectItem value="closed">Закрыт</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div>
+          <Label>Приоритет</Label>
+          <Select value={formData.priority} onValueChange={(val) => setFormData({...formData, priority: val as Priority})}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Низкий</SelectItem>
+              <SelectItem value="medium">Средний</SelectItem>
+              <SelectItem value="high">Высокий</SelectItem>
+              <SelectItem value="urgent">Срочный</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div>
+        <Label>Назначен на (опционально)</Label>
+        <Input 
+          value={formData.assignedTo} 
+          onChange={(e) => setFormData({...formData, assignedTo: e.target.value})} 
+          placeholder="Имя сотрудника" 
+        />
+      </div>
+      
+      <Button onClick={editingTicket ? handleUpdate : handleCreate} className="w-full">
+        {editingTicket ? "Сохранить" : "Создать"}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -20,10 +218,20 @@ const SupportSection = () => {
           <h2 className="text-3xl font-bold tracking-tight">Поддержка</h2>
           <p className="text-muted-foreground">Техническая поддержка и помощь</p>
         </div>
-        <Button className="gap-2">
-          <Icon name="Plus" className="h-4 w-4" />
-          Новое обращение
-        </Button>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2" onClick={() => { resetForm(); setEditingTicket(null); }}>
+              <Icon name="Plus" className="h-4 w-4" />
+              Новое обращение
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Новое обращение</DialogTitle>
+            </DialogHeader>
+            <TicketForm />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -33,7 +241,7 @@ const SupportSection = () => {
             <Icon name="MessageSquare" className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">8</div>
+            <div className="text-3xl font-bold">{openTickets}</div>
             <p className="text-xs text-muted-foreground mt-1">Требуют внимания</p>
           </CardContent>
         </Card>
@@ -43,7 +251,7 @@ const SupportSection = () => {
             <Icon name="Clock" className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">5</div>
+            <div className="text-3xl font-bold">{inProgressTickets}</div>
             <p className="text-xs text-muted-foreground mt-1">Ожидают ответа</p>
           </CardContent>
         </Card>
@@ -53,95 +261,101 @@ const SupportSection = () => {
             <Icon name="CheckCircle2" className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground mt-1">Средний срок 2ч</p>
+            <div className="text-3xl font-bold">{resolvedToday}</div>
+            <p className="text-xs text-muted-foreground mt-1">Тикетов</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Рейтинг поддержки</CardTitle>
-            <Icon name="Star" className="h-5 w-5 text-yellow-500" />
+            <CardTitle className="text-sm font-medium">Всего обращений</CardTitle>
+            <Icon name="FileText" className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">4.8</div>
-            <p className="text-xs text-muted-foreground mt-1">Средняя оценка</p>
+            <div className="text-3xl font-bold">{tickets.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Зарегистрировано</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Мои обращения</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {tickets.map((ticket) => (
-                <div key={ticket.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <Icon name="MessageSquare" className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">#{ticket.id} {ticket.subject}</div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                        <span>{ticket.date}</span>
-                        <span>•</span>
-                        <span>{ticket.replies} ответов</span>
-                      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Input 
+              placeholder="Поиск по теме, пользователю, ID..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1" 
+            />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Статус" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="open">Открытые</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="resolved">Решенные</SelectItem>
+                <SelectItem value="closed">Закрытые</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {filteredTickets.map((ticket) => (
+              <div key={ticket.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <Icon name="MessageSquare" className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <div className="font-medium">
+                      <Badge variant="outline" className="mr-2">{ticket.id}</Badge>
+                      {ticket.subject}
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                      <span>{ticket.userName}</span>
+                      <span>•</span>
+                      <span>{ticket.createdAt.toLocaleDateString('ru-RU')}</span>
+                      {ticket.assignedTo && (
+                        <>
+                          <span>•</span>
+                          <span>Назначен: {ticket.assignedTo}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={
-                      ticket.priority === 'high' ? 'destructive' :
-                      ticket.priority === 'medium' ? 'default' : 'secondary'
-                    }>
-                      {ticket.priority === 'high' ? 'Высокий' :
-                       ticket.priority === 'medium' ? 'Средний' : 'Низкий'}
-                    </Badge>
-                    <Badge variant={
-                      ticket.status === 'open' ? 'default' :
-                      ticket.status === 'in-progress' ? 'secondary' : 'outline'
-                    }>
-                      {ticket.status === 'open' ? 'Открыт' :
-                       ticket.status === 'in-progress' ? 'В работе' : 'Закрыт'}
-                    </Badge>
-                    <Button size="sm" variant="ghost">
-                      <Icon name="Eye" className="h-4 w-4" />
+                </div>
+                <div className="flex items-center gap-3">
+                  {getPriorityBadge(ticket.priority)}
+                  {getStatusBadge(ticket.status)}
+                  <div className="flex gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(ticket)}>
+                          <Icon name="Edit" className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Редактировать тикет</DialogTitle>
+                        </DialogHeader>
+                        <TicketForm />
+                      </DialogContent>
+                    </Dialog>
+                    <Button size="sm" variant="ghost" onClick={() => handleDelete(ticket.id)}>
+                      <Icon name="Trash2" className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Создать обращение</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Тема</Label>
-              <Input placeholder="Опишите проблему кратко" />
-            </div>
-            <div className="space-y-2">
-              <Label>Описание</Label>
-              <Textarea placeholder="Подробное описание проблемы..." rows={6} />
-            </div>
-            <div className="space-y-2">
-              <Label>Приоритет</Label>
-              <select className="w-full p-2 border rounded-md">
-                <option>Низкий</option>
-                <option>Средний</option>
-                <option>Высокий</option>
-              </select>
-            </div>
-            <Button className="w-full gap-2">
-              <Icon name="Send" className="h-4 w-4" />
-              Отправить
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+              </div>
+            ))}
+            {filteredTickets.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                Нет обращений
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
