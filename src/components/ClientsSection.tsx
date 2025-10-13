@@ -7,8 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { DataTable, Column, Filter } from "@/components/ui/data-table";
+import { ImportExportDialog } from "@/components/ImportExportDialog";
 import { clientService } from "@/services/clientService";
 import { Client } from "@/types";
+import { toast } from "sonner";
 
 const ClientsSection = () => {
   const [clients, setClients] = useState<Client[]>(clientService.getAll());
@@ -199,20 +201,39 @@ const ClientsSection = () => {
           <h2 className="text-3xl font-bold tracking-tight">Клиенты</h2>
           <p className="text-muted-foreground">База данных клиентов и их заказов</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => { resetForm(); setEditingClient(null); }}>
-              <Icon name="UserPlus" className="h-4 w-4" />
-              Добавить клиента
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Новый клиент</DialogTitle>
-            </DialogHeader>
-            <ClientForm />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <ImportExportDialog
+            data={clients}
+            filename="clients"
+            title="Клиенты"
+            columns={[
+              { key: 'id', label: 'ID' },
+              { key: 'name', label: 'Имя' },
+              { key: 'email', label: 'Email' },
+              { key: 'phone', label: 'Телефон' },
+              { key: 'address', label: 'Адрес' },
+              { key: 'totalOrders', label: 'Заказов' },
+              { key: 'totalSpent', label: 'Сумма' },
+            ]}
+            onImport={(data) => {
+              toast.success(`Импортировано ${data.length} клиентов`);
+            }}
+          />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => { resetForm(); setEditingClient(null); }}>
+                <Icon name="UserPlus" className="h-4 w-4" />
+                Добавить клиента
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Новый клиент</DialogTitle>
+              </DialogHeader>
+              <ClientForm />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

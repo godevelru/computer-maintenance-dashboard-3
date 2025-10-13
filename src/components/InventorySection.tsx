@@ -7,8 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { DataTable, Column, Filter } from "@/components/ui/data-table";
+import { ImportExportDialog } from "@/components/ImportExportDialog";
 import { inventoryService } from "@/services/inventoryService";
 import { InventoryItem } from "@/types";
+import { toast } from "sonner";
 
 const InventorySection = () => {
   const [items, setItems] = useState<InventoryItem[]>(inventoryService.getAll());
@@ -255,20 +257,41 @@ const InventorySection = () => {
           <h2 className="text-3xl font-bold tracking-tight">Инвентарь</h2>
           <p className="text-muted-foreground">Управление запчастями и расходниками</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => { resetForm(); setEditingItem(null); }}>
-              <Icon name="Plus" className="h-4 w-4" />
-              Добавить позицию
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Новая позиция</DialogTitle>
-            </DialogHeader>
-            <ItemForm />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <ImportExportDialog
+            data={items}
+            filename="inventory"
+            title="Инвентарь"
+            columns={[
+              { key: 'id', label: 'ID' },
+              { key: 'name', label: 'Наименование' },
+              { key: 'category', label: 'Категория' },
+              { key: 'sku', label: 'SKU' },
+              { key: 'quantity', label: 'Количество' },
+              { key: 'minQuantity', label: 'Мин. количество' },
+              { key: 'price', label: 'Цена' },
+              { key: 'supplier', label: 'Поставщик' },
+              { key: 'location', label: 'Местоположение' },
+            ]}
+            onImport={(data) => {
+              toast.success(`Импортировано ${data.length} позиций`);
+            }}
+          />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => { resetForm(); setEditingItem(null); }}>
+                <Icon name="Plus" className="h-4 w-4" />
+                Добавить позицию
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Новая позиция</DialogTitle>
+              </DialogHeader>
+              <ItemForm />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

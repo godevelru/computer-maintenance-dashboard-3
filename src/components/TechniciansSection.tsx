@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
 import { DataTable, Column, Filter } from "@/components/ui/data-table";
+import { ImportExportDialog } from "@/components/ImportExportDialog";
 import { technicianService } from "@/services/technicianService";
 import { Technician, TechnicianStatus } from "@/types";
+import { toast } from "sonner";
 
 const TechniciansSection = () => {
   const [technicians, setTechnicians] = useState<Technician[]>(technicianService.getAll());
@@ -302,20 +304,41 @@ const TechniciansSection = () => {
           <h2 className="text-3xl font-bold tracking-tight">Техники</h2>
           <p className="text-muted-foreground">Управление сотрудниками и распределение задач</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => { resetForm(); setEditingTechnician(null); }}>
-              <Icon name="UserPlus" className="h-4 w-4" />
-              Добавить техника
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Новый техник</DialogTitle>
-            </DialogHeader>
-            <TechnicianForm />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <ImportExportDialog
+            data={technicians}
+            filename="technicians"
+            title="Техники"
+            columns={[
+              { key: 'id', label: 'ID' },
+              { key: 'name', label: 'Имя' },
+              { key: 'email', label: 'Email' },
+              { key: 'phone', label: 'Телефон' },
+              { key: 'specialization', label: 'Специализация' },
+              { key: 'status', label: 'Статус' },
+              { key: 'hourlyRate', label: 'Ставка' },
+              { key: 'completedRepairs', label: 'Выполнено' },
+              { key: 'rating', label: 'Рейтинг' },
+            ]}
+            onImport={(data) => {
+              toast.success(`Импортировано ${data.length} техников`);
+            }}
+          />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => { resetForm(); setEditingTechnician(null); }}>
+                <Icon name="UserPlus" className="h-4 w-4" />
+                Добавить техника
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Новый техник</DialogTitle>
+              </DialogHeader>
+              <TechnicianForm />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

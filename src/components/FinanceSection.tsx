@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
 import { DataTable, Column, Filter } from "@/components/ui/data-table";
+import { ImportExportDialog } from "@/components/ImportExportDialog";
 import { financeService } from "@/services/financeService";
 import { Transaction, TransactionType } from "@/types";
+import { toast } from "sonner";
 
 const FinanceSection = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(financeService.getAll());
@@ -243,20 +245,40 @@ const FinanceSection = () => {
           <h2 className="text-3xl font-bold tracking-tight">Финансы</h2>
           <p className="text-muted-foreground">Учет доходов и расходов</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => { resetForm(); setEditingTransaction(null); }}>
-              <Icon name="Plus" className="h-4 w-4" />
-              Новая операция
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Новая операция</DialogTitle>
-            </DialogHeader>
-            <TransactionForm />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <ImportExportDialog
+            data={transactions}
+            filename="finance"
+            title="Финансы"
+            columns={[
+              { key: 'id', label: 'ID' },
+              { key: 'date', label: 'Дата' },
+              { key: 'type', label: 'Тип' },
+              { key: 'category', label: 'Категория' },
+              { key: 'description', label: 'Описание' },
+              { key: 'amount', label: 'Сумма' },
+              { key: 'paymentMethod', label: 'Способ оплаты' },
+              { key: 'relatedRepairId', label: 'ID заявки' },
+            ]}
+            onImport={(data) => {
+              toast.success(`Импортировано ${data.length} операций`);
+            }}
+          />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => { resetForm(); setEditingTransaction(null); }}>
+                <Icon name="Plus" className="h-4 w-4" />
+                Новая операция
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Новая операция</DialogTitle>
+              </DialogHeader>
+              <TransactionForm />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

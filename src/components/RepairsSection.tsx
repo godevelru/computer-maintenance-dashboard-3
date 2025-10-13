@@ -8,10 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { DataTable, Column, Filter } from "@/components/ui/data-table";
+import { ImportExportDialog } from "@/components/ImportExportDialog";
 import { repairService } from "@/services/repairService";
 import { clientService } from "@/services/clientService";
 import { technicianService } from "@/services/technicianService";
 import { Repair, RepairStatus, Priority } from "@/types";
+import { toast } from "sonner";
 
 const RepairsSection = () => {
   const [repairs, setRepairs] = useState<Repair[]>(repairService.getAll());
@@ -320,20 +322,40 @@ const RepairsSection = () => {
           <h2 className="text-3xl font-bold tracking-tight">Заявки на ремонт</h2>
           <p className="text-muted-foreground">Управление заявками на обслуживание</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => { resetForm(); setEditingRepair(null); }}>
-              <Icon name="Plus" className="h-4 w-4" />
-              Новая заявка
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Новая заявка</DialogTitle>
-            </DialogHeader>
-            <RepairForm />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <ImportExportDialog
+            data={repairs}
+            filename="repairs"
+            title="Заявки на ремонт"
+            columns={[
+              { key: 'id', label: 'ID' },
+              { key: 'deviceModel', label: 'Модель' },
+              { key: 'deviceType', label: 'Тип' },
+              { key: 'problem', label: 'Проблема' },
+              { key: 'clientName', label: 'Клиент' },
+              { key: 'status', label: 'Статус' },
+              { key: 'priority', label: 'Приоритет' },
+              { key: 'estimatedCost', label: 'Стоимость' },
+            ]}
+            onImport={(data) => {
+              toast.success(`Импортировано ${data.length} заявок`);
+            }}
+          />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={() => { resetForm(); setEditingRepair(null); }}>
+                <Icon name="Plus" className="h-4 w-4" />
+                Новая заявка
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Новая заявка</DialogTitle>
+              </DialogHeader>
+              <RepairForm />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-6">
