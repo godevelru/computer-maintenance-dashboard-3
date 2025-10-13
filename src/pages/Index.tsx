@@ -15,6 +15,7 @@ import ReportsSection from "@/components/ReportsSection";
 import SettingsSection from "@/components/SettingsSection";
 import SupportSection from "@/components/SupportSection";
 import WarehouseSection from "@/components/WarehouseSection";
+import RolesManager from "@/components/RolesManager";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -31,6 +32,7 @@ const Index = () => {
     { id: "finance", label: "Финансы", icon: "DollarSign", section: "finance" },
     { id: "warehouse", label: "Склад", icon: "Warehouse", section: "warehouse" },
     { id: "reports", label: "Отчеты", icon: "FileText", section: "reports" },
+    { id: "roles", label: "Роли и права", icon: "Shield", section: "roles" },
     { id: "settings", label: "Настройки", icon: "Settings", section: "settings" },
     { id: "support", label: "Поддержка", icon: "HelpCircle", section: "support" },
   ];
@@ -48,6 +50,7 @@ const Index = () => {
       case "finance": return <FinanceSection />;
       case "warehouse": return <WarehouseSection />;
       case "reports": return <ReportsSection />;
+      case "roles": return <RolesManager />;
       case "settings": return <SettingsSection />;
       case "support": return <SupportSection />;
       default: return <DashboardSection />;

@@ -36,7 +36,9 @@ const sectionPermissions: Record<string, UserRole[]> = {
   schedule: ['admin', 'manager'],
   finance: ['admin', 'manager'],
   reports: ['admin', 'manager'],
-  settings: ['admin']
+  roles: ['admin'],
+  settings: ['admin'],
+  support: ['admin', 'manager', 'technician', 'receptionist']
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

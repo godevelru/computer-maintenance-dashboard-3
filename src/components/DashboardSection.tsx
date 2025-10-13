@@ -8,6 +8,8 @@ import { repairService } from "@/services/repairService";
 import { clientService } from "@/services/clientService";
 import { technicianService } from "@/services/technicianService";
 import { inventoryService } from "@/services/inventoryService";
+import { useAuth } from "@/contexts/AuthContext";
+import UserPermissionsCard from "./UserPermissionsCard";
 
 interface StatCardProps {
   title: string;
@@ -408,6 +410,35 @@ const DashboardSection = () => {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <div className="grid gap-4 lg:grid-cols-2">
+      <UserPermissionsCard />
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Быстрые действия</CardTitle>
+          <CardDescription>Часто используемые функции</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Button className="w-full justify-start gap-2" variant="outline">
+            <Icon name="Plus" size={16} />
+            Создать новую заявку
+          </Button>
+          <Button className="w-full justify-start gap-2" variant="outline">
+            <Icon name="UserPlus" size={16} />
+            Добавить клиента
+          </Button>
+          <Button className="w-full justify-start gap-2" variant="outline">
+            <Icon name="FileText" size={16} />
+            Сформировать отчёт
+          </Button>
+          <Button className="w-full justify-start gap-2" variant="outline">
+            <Icon name="Calendar" size={16} />
+            Открыть график
+          </Button>
         </CardContent>
       </Card>
     </div>
