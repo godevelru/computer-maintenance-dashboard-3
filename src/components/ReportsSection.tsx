@@ -31,7 +31,7 @@
  *    - Распределение по типам услуг (круговая диаграмма)
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -157,12 +157,21 @@ interface TemplateReport {
 
 const ReportsSection = () => {
   const [builderOpen, setBuilderOpen] = useState(false);
-  const [savedReports, setSavedReports] = useState<ReportConfig[]>([]);
+  const [savedReports, setSavedReports] = useState<ReportConfig[]>(() => {
+    const saved = localStorage.getItem('savedReports');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [viewingTemplate, setViewingTemplate] = useState<TemplateReport | null>(null);
   const [viewingCustomReport, setViewingCustomReport] = useState<ReportConfig | null>(null);
   const [templateData, setTemplateData] = useState<any[]>([]);
   const [customReportData, setCustomReportData] = useState<any[]>([]);
   const [editingReportIndex, setEditingReportIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (savedReports.length > 0) {
+      localStorage.setItem('savedReports', JSON.stringify(savedReports));
+    }
+  }, [savedReports]);
 
   const handleSaveReport = (config: ReportConfig) => {
     if (editingReportIndex !== null) {
@@ -170,10 +179,10 @@ const ReportsSection = () => {
       newReports[editingReportIndex] = config;
       setSavedReports(newReports);
       setEditingReportIndex(null);
-      toast.success('Отчет обновлен');
+      toast.success('Отчет обновлен и сохранен автоматически');
     } else {
       setSavedReports([...savedReports, config]);
-      toast.success('Отчет успешно сохранен');
+      toast.success('Отчет сохранен и будет доступен после перезагрузки');
     }
   };
 
