@@ -3,6 +3,24 @@ export type PaymentStatus = 'pending' | 'paid' | 'refunded';
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type TechnicianStatus = 'available' | 'busy' | 'on_break' | 'off_duty';
 export type TransactionType = 'income' | 'expense';
+export type UserRole = 'admin' | 'manager' | 'technician' | 'receptionist';
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  fullName: string;
+  avatar?: string;
+  createdAt: Date;
+  lastLogin?: Date;
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
 
 export interface Repair {
   id: string;

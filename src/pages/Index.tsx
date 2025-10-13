@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
+import { useAuth } from "@/contexts/AuthContext";
+import UserMenu from "@/components/UserMenu";
 import DashboardSection from "@/components/DashboardSection";
 import RepairsSection from "@/components/RepairsSection";
 import ClientsSection from "@/components/ClientsSection";
@@ -16,20 +19,23 @@ import WarehouseSection from "@/components/WarehouseSection";
 const Index = () => {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { canAccess } = useAuth();
 
   const menuItems = [
-    { id: "dashboard", label: "Дашборд", icon: "LayoutDashboard" },
-    { id: "repairs", label: "Заявки", icon: "Wrench" },
-    { id: "clients", label: "Клиенты", icon: "Users" },
-    { id: "inventory", label: "Инвентарь", icon: "Package" },
-    { id: "technicians", label: "Техники", icon: "UserCheck" },
-    { id: "schedule", label: "График", icon: "Calendar" },
-    { id: "finance", label: "Финансы", icon: "DollarSign" },
-    { id: "warehouse", label: "Склад", icon: "Warehouse" },
-    { id: "reports", label: "Отчеты", icon: "FileText" },
-    { id: "settings", label: "Настройки", icon: "Settings" },
-    { id: "support", label: "Поддержка", icon: "HelpCircle" },
+    { id: "dashboard", label: "Дашборд", icon: "LayoutDashboard", section: "dashboard" },
+    { id: "repairs", label: "Заявки", icon: "Wrench", section: "repairs" },
+    { id: "clients", label: "Клиенты", icon: "Users", section: "clients" },
+    { id: "inventory", label: "Инвентарь", icon: "Package", section: "inventory" },
+    { id: "technicians", label: "Техники", icon: "UserCheck", section: "technicians" },
+    { id: "schedule", label: "График", icon: "Calendar", section: "schedule" },
+    { id: "finance", label: "Финансы", icon: "DollarSign", section: "finance" },
+    { id: "warehouse", label: "Склад", icon: "Warehouse", section: "warehouse" },
+    { id: "reports", label: "Отчеты", icon: "FileText", section: "reports" },
+    { id: "settings", label: "Настройки", icon: "Settings", section: "settings" },
+    { id: "support", label: "Поддержка", icon: "HelpCircle", section: "support" },
   ];
+
+  const accessibleMenuItems = menuItems.filter(item => canAccess(item.section));
 
   const renderSection = () => {
     switch (activeSection) {
@@ -78,7 +84,7 @@ const Index = () => {
         </div>
 
         <nav className="flex-1 p-3 overflow-y-auto">
-          {menuItems.map((item) => (
+          {accessibleMenuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
@@ -92,20 +98,26 @@ const Index = () => {
               {!sidebarCollapsed && <span className="text-sm">{item.label}</span>}
             </button>
           ))}
+          
+          {menuItems.length !== accessibleMenuItems.length && !sidebarCollapsed && (
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Icon name="Lock" className="h-3 w-3" />
+                <span>{menuItems.length - accessibleMenuItems.length} разделов скрыто</span>
+              </div>
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t border-sidebar-border">
-          <div className={`flex items-center gap-3 ${sidebarCollapsed ? "justify-center" : ""}`}>
-            <div className="h-11 w-11 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0 ring-2 ring-primary/20">
-              <Icon name="User" className="h-6 w-6 text-primary" />
-            </div>
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sidebar-foreground text-sm truncate">Администратор</div>
-                <div className="text-xs text-sidebar-foreground/70 mt-0.5">admin@company.ru</div>
+          {!sidebarCollapsed && <UserMenu />}
+          {sidebarCollapsed && (
+            <div className="flex justify-center">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Icon name="User" className="h-5 w-5 text-primary" />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -116,6 +128,12 @@ const Index = () => {
               <h2 className="text-2xl font-bold">
                 {menuItems.find(item => item.id === activeSection)?.label}
               </h2>
+              {!canAccess(activeSection) && (
+                <Badge variant="destructive" className="gap-1">
+                  <Icon name="Lock" className="h-3 w-3" />
+                  Нет доступа
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" size="icon" className="rounded-xl hover:shadow-md transition-shadow">
@@ -129,7 +147,25 @@ const Index = () => {
         </header>
 
         <div className="p-8 max-w-[1800px] mx-auto">
-          {renderSection()}
+          {canAccess(activeSection) ? (
+            renderSection()
+          ) : (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="text-center max-w-md">
+                <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                  <Icon name="Lock" className="h-10 w-10 text-red-600" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Доступ запрещён</h3>
+                <p className="text-muted-foreground mb-4">
+                  У вас недостаточно прав для просмотра этого раздела
+                </p>
+                <Button onClick={() => setActiveSection('dashboard')} variant="outline">
+                  <Icon name="ArrowLeft" className="mr-2 h-4 w-4" />
+                  Вернуться к дашборду
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
