@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -67,6 +67,18 @@ export const ReportBuilder = ({
   const [sortBy, setSortBy] = useState(initialConfig?.sortBy || '');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(initialConfig?.sortOrder || 'asc');
   const [groupBy, setGroupBy] = useState(initialConfig?.groupBy || '');
+
+  useEffect(() => {
+    if (open) {
+      setName(initialConfig?.name || '');
+      setDescription(initialConfig?.description || '');
+      setSelectedFields(initialConfig?.fields || []);
+      setFilters(initialConfig?.filters || []);
+      setSortBy(initialConfig?.sortBy || '');
+      setSortOrder(initialConfig?.sortOrder || 'asc');
+      setGroupBy(initialConfig?.groupBy || '');
+    }
+  }, [open, initialConfig]);
 
   const handleFieldToggle = (fieldKey: string) => {
     setSelectedFields((prev) =>
